@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
 import rclpy
 from rclpy.node import Node
 
@@ -6,6 +7,7 @@ import rosidl_parser
 import threading
 from std_msgs import msg
 from std_msgs.msg import   Float64
+import numpy as np
 
 
 class ExampleControllerMinimal(Node):
@@ -14,7 +16,7 @@ class ExampleControllerMinimal(Node):
         super().__init__('example_controller')
         self.publisher_left_ = self.create_publisher(Float64, 'left_wheel_cmd_vel', 10)
         self.publisher_right_ = self.create_publisher(Float64, 'right_wheel_cmd_vel', 10)
-        self._loop_rate = self.create_rate(20.0, self.get_clock())
+        self._loop_rate = self.create_rate(10.0, self.get_clock())
 
 def main(args=None):
     rclpy.init(args=args)
@@ -30,7 +32,7 @@ def main(args=None):
         msg = Float64()
         msg.data = 1.0
         minimal_publisher.publisher_left_.publish(msg)
-        msg.data = 1.0
+        msg.data = -1.0
         minimal_publisher.publisher_right_.publish(msg)
         minimal_publisher.get_logger().info("publishing speeds")
         minimal_publisher._loop_rate.sleep()

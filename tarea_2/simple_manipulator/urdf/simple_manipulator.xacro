@@ -1,0 +1,245 @@
+<?xml version="1.0"?>
+
+<!-- RRRRRR (simple) manipulator -->
+
+<robot name="simple_manipulator" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Constants for robot dimensions -->
+  <xacro:property name="mass_base_link"  value="1.0" />
+  <xacro:property name="radius_base_link"  value="0.5" />
+  <xacro:property name="length_base_link"  value="0.1" />
+
+  <xacro:property name="mass_shoulder_link"  value="1.0" />
+  <xacro:property name="x_length_shoulder_link"  value="0.2" />
+  <xacro:property name="y_length_shoulder_link"  value="0.2" />
+  <xacro:property name="z_length_shoulder_link"  value="0.3" />
+
+  <xacro:property name="mass_arm_link"  value="5.0" />
+  <xacro:property name="x_length_arm_link"  value="0.1" />
+  <xacro:property name="y_length_arm_link"  value="0.1" />
+  <xacro:property name="z_length_arm_link"  value="0.9" />
+
+  <xacro:property name="mass_forearm_link"  value="5.0" />
+  <xacro:property name="x_length_forearm_link"  value="0.1" />
+  <xacro:property name="y_length_forearm_link"  value="0.1" />
+  <xacro:property name="z_length_forearm_link"  value="0.9" />
+
+  <xacro:property name="mass_wrist_1_link"  value="1.0" />
+  <xacro:property name="x_length_wrist_1_link"  value="0.1" />
+  <xacro:property name="y_length_wrist_1_link"  value="0.1" />
+  <xacro:property name="z_length_wrist_1_link"  value="0.4" />
+
+  <xacro:property name="mass_wrist_2_link"  value="1.0" />
+  <xacro:property name="x_length_wrist_2_link"  value="0.1" />
+  <xacro:property name="y_length_wrist_2_link"  value="0.1" />
+  <xacro:property name="z_length_wrist_2_link"  value="0.2" />
+
+  <xacro:property name="mass_wrist_3_link"  value="1.0" />
+  <xacro:property name="x_length_wrist_3_link"  value="0.1" />
+  <xacro:property name="y_length_wrist_3_link"  value="0.1" />
+  <xacro:property name="z_length_wrist_3_link"  value="0.1" />
+  
+  <material name="red">
+    <color rgba="0.6 0.0 0.0 1.0"/>
+  </material>
+
+  <material name="green">
+    <color rgba="0.0 0.8 0.0 1.0"/>
+  </material>
+
+  <material name="blue">
+    <color rgba="0.0 0.0 0.8 1.0"/>
+  </material>
+
+  <material name="yellow">
+    <color rgba="0.8 0.8 0.0 1.0"/>
+  </material>
+
+  <material name="orange">
+    <color rgba="0.8 0.2 0.0 1.0"/>
+  </material>
+
+  <material name="purple">
+    <color rgba="0.5 0.0 0.5 1.0"/>
+  </material>
+
+  <material name="gray">
+    <color rgba="0.8 0.8 0.8 1.0"/>
+  </material>
+
+  <xacro:macro name="cylindrical_link" params="name length radius mass color">
+    <link name="${name}">
+      <collision>
+        <origin xyz="0 0 ${length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder length="${length}" radius="${radius}"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 ${length/2}" rpy="0 0 0"/>
+        <geometry>
+          <cylinder length="${length}" radius="${radius}"/>
+        </geometry>
+        <material name="${color}"/>
+      </visual>
+
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="${mass}"/>
+        <inertia
+          ixx="${(1/12.)*mass*((3*radius**2) + (length**2))}" ixy="0.0" ixz="0.0"
+          iyy="${(1/12.)*mass*((3*radius**2) + (length**2))}" iyz="0.0"
+          izz="${0.5*mass*radius**2}"/>
+      </inertial>
+    </link>
+  </xacro:macro>
+
+  <xacro:macro name="cuboid_link" params="name x_length y_length z_length mass color">
+
+    <link name="${name}">
+      <collision>
+        <origin xyz="0 0 ${z_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${x_length} ${y_length} ${z_length}"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 ${z_length/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${x_length} ${y_length} ${z_length}"/>
+        </geometry>
+        <material name="${color}"/>
+      </visual>
+
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="${mass}"/>
+        <inertia
+          ixx="${(1/12.)*mass*(y_length**2 + z_length**2)}" ixy="0.0" ixz="0.0"
+          iyy="${(1/12.)*mass*(x_length**2 + z_length**2)}" iyz="0.0"
+          izz="${(1/12.)*mass*(x_length**2 + y_length**2)}"/>
+      </inertial>
+    </link>
+  </xacro:macro>
+
+  <link name="world"/>
+
+  <joint name="fixed_joint" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+  </joint>
+
+  <xacro:cylindrical_link 
+    name="base_link" 
+    length="${length_base_link}" 
+    radius="${radius_base_link}" 
+    mass="${mass_base_link}" 
+    color="red"/>
+
+  <joint name="shoulder_yaw_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="shoulder_link"/>
+    <origin xyz="0 0 ${length_base_link}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${-pi}" upper="${pi}" effort="1000.0" velocity="5.0"/>
+  </joint>
+
+  <xacro:cuboid_link 
+    name="shoulder_link" 
+    x_length="${x_length_shoulder_link}" 
+    y_length="${y_length_shoulder_link}" 
+    z_length="${z_length_shoulder_link}" 
+    mass="${mass_shoulder_link}"
+    color="blue"/>
+
+  <joint name="shoulder_pitch_joint" type="revolute">
+    <parent link="shoulder_link"/>
+    <child link="arm_link"/>
+    <origin xyz="0 ${x_length_shoulder_link/2+x_length_arm_link/2} ${z_length_shoulder_link-0.1}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="${-pi/2}" upper="${pi/2}" effort="1000.0" velocity="5.0"/>
+  </joint>
+
+  <xacro:cuboid_link 
+    name="arm_link" 
+    x_length="${x_length_arm_link}" 
+    y_length="${y_length_arm_link}" 
+    z_length="${z_length_arm_link}" 
+    mass="${mass_arm_link}" 
+    color="green"/>
+
+  <joint name="elbow_joint" type="revolute">
+    <parent link="arm_link"/>
+    <child link="forearm_link"/>
+    <origin xyz="0 ${-x_length_arm_link/2-x_length_forearm_link/2} ${z_length_arm_link-0.1}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="${-pi}" upper="${pi}" effort="1000.0" velocity="5.0"/>
+  </joint>
+
+  <xacro:cuboid_link 
+    name="forearm_link" 
+    x_length="${x_length_forearm_link}" 
+    y_length="${y_length_forearm_link}" 
+    z_length="${z_length_forearm_link}" 
+    mass="${mass_forearm_link}" 
+    color="yellow"/>
+
+  <joint name="wrist_1_joint" type="revolute">
+    <parent link="forearm_link"/>
+    <child link="wrist_1_link"/>
+    <origin xyz="0 ${x_length_wrist_1_link/2+x_length_wrist_2_link/2} ${z_length_forearm_link-0.1}" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="${-pi}" upper="${pi}" effort="1000.0" velocity="5.0"/>
+  </joint>
+
+  <xacro:cuboid_link 
+    name="wrist_1_link" 
+    x_length="${x_length_wrist_1_link}" 
+    y_length="${y_length_wrist_1_link}" 
+    z_length="${z_length_wrist_1_link}" 
+    mass="${mass_wrist_1_link}" 
+    color="orange"/>
+
+  <joint name="wrist_2_joint" type="revolute">
+    <parent link="wrist_1_link"/>
+    <child link="wrist_2_link"/>
+    <origin xyz="${-x_length_wrist_2_link/2-x_length_wrist_3_link/2} 0 ${z_length_wrist_1_link-0.1}" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="${-pi}" upper="${pi}" effort="1000.0" velocity="5.0"/>
+  </joint>
+
+  <xacro:cuboid_link 
+    name="wrist_2_link" 
+    x_length="${x_length_wrist_2_link}" 
+    y_length="${y_length_wrist_2_link}" 
+    z_length="${z_length_wrist_2_link}" 
+    mass="${mass_wrist_2_link}" 
+    color="purple"/>
+
+  <joint name="wrist_3_joint" type="revolute">
+    <parent link="wrist_2_link"/>
+    <child link="wrist_3_link"/>
+    <origin xyz="0 0 ${z_length_wrist_2_link}" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="${-pi}" upper="${pi}" effort="1000.0" velocity="5.0"/>
+  </joint>
+
+  <xacro:cuboid_link 
+    name="wrist_3_link" 
+    x_length="${x_length_wrist_3_link}" 
+    y_length="${y_length_wrist_3_link}" 
+    z_length="${z_length_wrist_3_link}" 
+    mass="${mass_wrist_3_link}" 
+    color="gray"/>
+
+  <joint name="eef_joint" type="fixed">
+    <parent link="wrist_3_link"/>
+    <child link="eef_link"/>
+    <origin xyz="0 0 ${z_length_wrist_3_link}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="eef_link"/>
+
+</robot>

@@ -1,3 +1,6 @@
 tarea_1/build
 tarea_1/install
 tarea_1/log
+build/
+install/
+log/

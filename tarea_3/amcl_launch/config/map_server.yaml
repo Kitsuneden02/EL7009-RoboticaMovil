@@ -1,0 +1,4 @@
+map_server:
+  ros__parameters:
+    autostart_node: true
+

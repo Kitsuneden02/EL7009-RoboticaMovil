@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import rclpy
 import numpy as np
 from rclpy.node import Node
@@ -15,7 +15,7 @@ from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 from rclpy.executors import ExternalShutdownException
 from scipy.signal import convolve
-import tf
+#import tf
 from tf_transformations import quaternion_from_euler, quaternion_multiply
 import os
 
@@ -157,47 +157,99 @@ class EkfLocalization(Node):
         return marker_points
 
     def laser_callback_(self, msg: LaserScan):
-
         marker_points = self.detect_corners(msg)
         self.marker_publisher_.publish(marker_points)
 
-        # Aqui use los puntos detectados ( en marker_points.points ) para realizar la correccion usando EKF
+        current_pose = np.array(self.estimated_pose_2d, dtype=np.float64).flatten()
+        if current_pose.size != 3:
+            current_pose = np.array([0.0, 0.0, 0.0], dtype=np.float64)
 
-        predicted_measurements = np.zeros((len(self.map_), 2))
-        for i, map_point in enumerate(self.map_):
-            print(f"map_point: {map_point}")
-
-            ## prediga la posicion del punto vista desde la pose del robot
-            ## YOUR CODE HERE:
-            prediction = np.array([0.0, 0.0])
-            print(f"prediction: {prediction}")
-            predicted_measurements[i] = prediction
-            pass
+        predicted_measurements = []
+        for map_point in self.map_:
+            dx = map_point[0] - current_pose[0]
+            dy = map_point[1] - current_pose[1]
+            predicted = np.array([
+                dx * np.cos(current_pose[2]) + dy * np.sin(current_pose[2]),
+                -dx * np.sin(current_pose[2]) + dy * np.cos(current_pose[2])
+            ])
+            predicted_measurements.append(predicted)
 
         for point in marker_points.points:
-            ## busca el punto mas cercano en la lista de predicciones
-            ## YOUR CODE HERE: 
+            min_dist = float('inf')
+            best_match = None
+            
+            for i, pred in enumerate(predicted_measurements):
+                dist = np.linalg.norm(np.array([point.x, point.y]) - pred)
+                if dist < min_dist and dist < 0.5:
+                    min_dist = dist
+                    best_match = i
 
-            ## actualiza la posicion estimada con la medicion:
-            ## YOUR CODE HERE:
-            pass
+            if best_match is not None:
+                map_point = self.map_[best_match]
+                z = np.array([point.x, point.y])
+                z_pred = predicted_measurements[best_match]
+                
+                dx = map_point[0] - current_pose[0]
+                dy = map_point[1] - current_pose[1]
+                
+                H = np.array([
+                    [-np.cos(current_pose[2]), -np.sin(current_pose[2]), -dx*np.sin(current_pose[2]) + dy*np.cos(current_pose[2])],
+                    [np.sin(current_pose[2]), -np.cos(current_pose[2]), -dx*np.cos(current_pose[2]) - dy*np.sin(current_pose[2])]
+                ])
+                
+                R = np.diag([0.1, 0.1])
+                y = z - z_pred
+                S = H @ self.covariance_2d @ H.T + R
+                K = self.covariance_2d @ H.T @ np.linalg.inv(S)
+                
+                correction = np.squeeze(np.asarray(K @ y))
+                if correction.size == 1:
+                    correction = np.array([0.0, 0.0, correction.item()])
+                elif correction.size == 2:
+                    correction = np.append(correction, 0.0)
+                
+                new_pose = np.array([
+                    current_pose[0] + correction[0],
+                    current_pose[1] + correction[1],
+                    (current_pose[2] + correction[2] + np.pi) % (2 * np.pi) - np.pi
+                ])
+
+                self.estimated_pose_2d = new_pose
+                self.covariance_2d = (np.eye(3) - K @ H) @ self.covariance_2d
+                print("K shape:", K.shape)
+                print("y shape:", y.shape)
+                print("correction shape:", (K @ y).shape)
+                print("estimated_pose shape:", self.estimated_pose_2d.shape)
 
 
     def odom_callback_(self, msg: Odometry):
-        # use odometry to do the prediction step of the ekf
-        # YOUR CODE HERE
-        #   self.estimated_pose_2d = XXXX
-        #   self.covariance_2d =  self.covariance_2d +  XXXX
-        pass
+        current_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        if hasattr(self, 'last_time'):
+            dt = current_time - self.last_time
+        else:
+            dt = 0.1 
+        self.last_time = current_time
 
+        theta = self.estimated_pose_2d[2]
+        v = msg.twist.twist.linear.x
+        w = msg.twist.twist.angular.z
 
+        dx = v * math.cos(theta) * dt
+        dy = v * math.sin(theta) * dt
+        dtheta = w * dt
 
+        self.estimated_pose_2d += np.array([dx, dy, dtheta])
+        self.estimated_pose_2d[2] = (self.estimated_pose_2d[2] + np.pi) % (2 * np.pi) - np.pi  # normalizar ángulo
 
+        F = np.array([
+            [1, 0, -v * math.sin(theta) * dt],
+            [0, 1,  v * math.cos(theta) * dt],
+            [0, 0, 1]
+        ])
 
+        Q = np.diag([0.05, 0.05, 0.02])
 
-
-
-
+        self.covariance_2d = F @ self.covariance_2d @ F.T + Q
 
 def main():
     rclpy.init()

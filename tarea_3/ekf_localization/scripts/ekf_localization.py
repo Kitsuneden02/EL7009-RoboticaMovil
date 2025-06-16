@@ -197,7 +197,7 @@ class EkfLocalization(Node):
                     [np.sin(current_pose[2]), -np.cos(current_pose[2]), -dx*np.cos(current_pose[2]) - dy*np.sin(current_pose[2])]
                 ])
                 
-                R = np.diag([0.1, 0.1])
+                R = np.diag([0.4, 0.4])
                 y = z - z_pred
                 S = H @ self.covariance_2d @ H.T + R
                 K = self.covariance_2d @ H.T @ np.linalg.inv(S)
@@ -247,7 +247,7 @@ class EkfLocalization(Node):
             [0, 0, 1]
         ])
 
-        Q = np.diag([0.05, 0.05, 0.02])
+        Q = np.diag([0.045, 0.045, 0.02])
 
         self.covariance_2d = F @ self.covariance_2d @ F.T + Q
 
